@@ -1,5 +1,6 @@
 package com.gentics.odb;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -114,7 +115,7 @@ public class IndexRegressionTest extends AbstractOrientTest {
 				}
 				foundEdges = true;
 			}
-			assertTrue("The index should have returned edges", foundEdges);
+			assertFalse("The index should not have returned edges", foundEdges);
 		} finally {
 			if (tx2 != null) {
 				tx2.shutdown();
