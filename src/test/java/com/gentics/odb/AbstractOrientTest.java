@@ -25,13 +25,6 @@ public abstract class AbstractOrientTest {
 				if (typeModifier != null) {
 					typeModifier.accept(edgeType);
 				}
-
-//				edgeType.createProperty(fieldKey, OType.STRING);
-//				
-//				String indexName = label + "_name";
-//				edgeType.createIndex(indexName.toLowerCase(),
-//					unique ? OClass.INDEX_TYPE.UNIQUE_HASH_INDEX.toString() : OClass.INDEX_TYPE.NOTUNIQUE_HASH_INDEX.toString(),
-//					null, new ODocument().fields("ignoreNullValues", true), new String[] { fieldKey });
 			}
 		} finally {
 			noTx.shutdown();
