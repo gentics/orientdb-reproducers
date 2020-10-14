@@ -82,11 +82,10 @@ public class IndexRegression5Test extends AbstractOrientTest {
 		switch (uuid) {
 		case "A":
 		case "B":
-		case "C":
 			assertEquals("Each element on level one should have two children", 2, children.size());
 			break;
 		case "R0":
-			assertEquals("The root level element should have 3 children", 3, children.size());
+			assertEquals("The root level element should have 2 children", 2, children.size());
 			break;
 		default:
 			assertEquals("Leaves should not have children", 0, children.size());
@@ -116,10 +115,6 @@ public class IndexRegression5Test extends AbstractOrientTest {
 			Vertex B = createNode(tx, root, "B");
 			Vertex B_1 = createNode(tx, B, "B_1");
 			Vertex B_2 = createNode(tx, B, "B_2");
-
-			Vertex C = createNode(tx, root, "C");
-			Vertex C_1 = createNode(tx, C, "C_1");
-			Vertex C_2 = createNode(tx, C, "C_2");
 
 			tx.commit();
 			return root.getId();
