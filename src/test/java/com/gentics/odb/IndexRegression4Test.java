@@ -67,9 +67,9 @@ public class IndexRegression4Test extends AbstractOrientTest {
 			OIndex idxA = type.createIndex(INDEX_A_NAME, indexType, null, meta, fieldsA);
 			assertNotNull("Index was not created.", idxA);
 
-//			String fieldsB[] = { "out", BRANCH_KEY, TYPE_KEY };
-//			OIndex idxB = type.createIndex(INDEX_B_NAME, indexType, null, meta, fieldsB);
-//			assertNotNull("Index was not created.", idxB);
+			String fieldsB[] = { "out", BRANCH_KEY, TYPE_KEY };
+			OIndex idxB = type.createIndex(INDEX_B_NAME, indexType, null, meta, fieldsB);
+			assertNotNull("Index was not created.", idxB);
 		});
 
 		addVertexType(factory::getNoTx, "NodeImpl", null, null);
@@ -115,27 +115,27 @@ public class IndexRegression4Test extends AbstractOrientTest {
 			Vertex node = tx.getVertex(nodeId);
 
 			// Remove the vertices. This will implicitly also remove the edges
-//			node.getVertices(Direction.OUT, EDGE_LABEL).forEach(Vertex::remove);
+			node.getVertices(Direction.OUT, EDGE_LABEL).forEach(Vertex::remove);
 
 			// Now try to lookup the edge for the initial content
-//			assertInitialEdgeLookup(INDEX_A_NAME, nodeId, tx, false);
-//			assertInitialEdgeLookup(INDEX_B_NAME, nodeId, tx, false);
+			assertInitialEdgeLookup(INDEX_A_NAME, nodeId, tx, false);
+			assertInitialEdgeLookup(INDEX_B_NAME, nodeId, tx, false);
 
-//			Vertex newDraftContent = tx.addVertex("class:ContentImpl");
-//			Vertex newInitialContent = tx.addVertex("class:ContentImpl");
-//
-//			Edge newInitialEdge = node.addEdge(EDGE_LABEL, newInitialContent);
-//			newInitialEdge.setProperty(TYPE_KEY, TYPE_INITIAL);
-//			newInitialEdge.setProperty(LANGUAGE_KEY, LANG_EN);
-//			newInitialEdge.setProperty(BRANCH_KEY, BRANCH_UUID);
-//
-//			Edge newDraftEdge = node.addEdge(EDGE_LABEL, newDraftContent);
-//			newDraftEdge.setProperty(TYPE_KEY, TYPE_DRAFT);
-//			newDraftEdge.setProperty(LANGUAGE_KEY, LANG_EN);
-//			newDraftEdge.setProperty(BRANCH_KEY, BRANCH_UUID);
+			Vertex newDraftContent = tx.addVertex("class:ContentImpl");
+			Vertex newInitialContent = tx.addVertex("class:ContentImpl");
+
+			Edge newInitialEdge = node.addEdge(EDGE_LABEL, newInitialContent);
+			newInitialEdge.setProperty(TYPE_KEY, TYPE_INITIAL);
+			newInitialEdge.setProperty(LANGUAGE_KEY, LANG_EN);
+			newInitialEdge.setProperty(BRANCH_KEY, BRANCH_UUID);
+
+			Edge newDraftEdge = node.addEdge(EDGE_LABEL, newDraftContent);
+			newDraftEdge.setProperty(TYPE_KEY, TYPE_DRAFT);
+			newDraftEdge.setProperty(LANGUAGE_KEY, LANG_EN);
+			newDraftEdge.setProperty(BRANCH_KEY, BRANCH_UUID);
 
 			assertInitialEdgeLookup(INDEX_A_NAME, nodeId, tx, true);
-//			assertInitialEdgeLookup(INDEX_B_NAME, nodeId, tx, true);
+			assertInitialEdgeLookup(INDEX_B_NAME, nodeId, tx, true);
 
 			tx.commit();
 		} finally {
@@ -171,14 +171,14 @@ public class IndexRegression4Test extends AbstractOrientTest {
 			assertFalse("The index should not have returned edges", foundEdges);
 		}
 
-//		// Also assert direct index lookup
-//		OIndexManager manager = tx.getRawGraph().getMetadata().getIndexManager();
-//		List<?> entryList = (List<?>) manager.getIndex(indexName).get(compositeKey);
-//		if (expectEdge) {
-//			assertFalse("The index should have returned a value but got " + entryList, entryList.isEmpty());
-//		} else {
-//			assertTrue("The index should not have returned a value but got " + entryList, entryList.isEmpty());
-//		}
+		// // Also assert direct index lookup
+		// OIndexManager manager = tx.getRawGraph().getMetadata().getIndexManager();
+		// List<?> entryList = (List<?>) manager.getIndex(indexName).get(compositeKey);
+		// if (expectEdge) {
+		// assertFalse("The index should have returned a value but got " + entryList, entryList.isEmpty());
+		// } else {
+		// assertTrue("The index should not have returned a value but got " + entryList, entryList.isEmpty());
+		// }
 
 	}
 }
