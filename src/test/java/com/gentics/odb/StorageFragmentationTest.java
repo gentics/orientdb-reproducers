@@ -26,8 +26,8 @@ public class StorageFragmentationTest extends AbstractOrientTest {
 	 * ************************************************************************/
 	private static final int INITIAL_TEXT_SIZE = (int) Math.ceil(0.4 * 1024 * 1024);
 	private static final boolean REUSE_VERTEX = false;
-	private static final double REDUCTION = 100_000;
-	private static final boolean REDUCE_BY_MULTIPLICATION = false;
+	private static final double REDUCTION = .5;
+	private static final boolean REDUCE_BY_MULTIPLICATION = true;
 	private static final int VERTEX_COUNT = 5_000;
 	private static final int DELETE_CREATE_OPS = 50_000;
 
