@@ -1,57 +1,46 @@
 package com.gentics.odb;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import com.orientechnologies.orient.core.Orient;
+import com.orientechnologies.orient.core.config.OGlobalConfiguration;
+import com.tinkerpop.blueprints.Vertex;
+import com.tinkerpop.blueprints.impls.orient.OrientGraph;
+import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
+import com.tinkerpop.blueprints.impls.orient.OrientVertex;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
-import org.junit.Before;
-import org.junit.Test;
-
-import com.orientechnologies.orient.core.Orient;
-import com.orientechnologies.orient.core.config.OGlobalConfiguration;
-import com.thedeanda.lorem.Lorem;
-import com.thedeanda.lorem.LoremIpsum;
-import com.tinkerpop.blueprints.Vertex;
-import com.tinkerpop.blueprints.impls.orient.OrientGraph;
-import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
-import com.tinkerpop.blueprints.impls.orient.OrientVertex;
+import static org.junit.Assert.assertTrue;
 
 public class StorageFragmentationTest extends AbstractOrientTest {
 
-	private OrientGraphFactory factory;
+	/* ************************************************************************
+	 * Test settings
+	 * ************************************************************************/
+	private static final int INITIAL_TEXT_SIZE = (int) Math.ceil(0.4 * 1024 * 1024);
+	private static final boolean REUSE_VERTEX = false;
+	private static final double REDUCTION = 100_000;
+	private static final boolean REDUCE_BY_MULTIPLICATION = false;
+	private static final int VERTEX_COUNT = 5_000;
+	private static final int DELETE_CREATE_OPS = 50_000;
 
-	public static final String DB_NAME = StorageFragmentationTest.class.getSimpleName();
-
-	public static final String CONTENT_TYPE = "ContentImpl";
-
-	public static Lorem lorem = LoremIpsum.getInstance();
-
-	/**
-	 * Test parameters
-	 */
-	private boolean reUseVertex = false;
-
-	public static final int INITIAL_TEXT_SIZE = 30;
-
-	/**
-	 * Reduce the property size by two paragraphs for replaced vertices
-	 */
-	public static final int REDUCTION_STEP = 0;
-
-	public static final int VERTEX_COUNT = 5_000;
-
-	public static final int DELETE_CREATE_OPS = 50_000;
-
-	private List<RecordInfo> ids = new ArrayList<>(VERTEX_COUNT);
-
+	private static final String DB_NAME = StorageFragmentationTest.class.getSimpleName();
+	private static final String CONTENT_TYPE = "ContentImpl";
 	private static final File DB_FOLDER = new File("target", DB_NAME);
 	private static final File WAL_FOLDER = new File("target", "wal");
+
+	private final List<RecordInfo> ids = new ArrayList<>(VERTEX_COUNT);
+
+	private OrientGraphFactory factory;
+	private String content;
+
 
 	@Before
 	public void setupDB() {
@@ -94,11 +83,16 @@ public class StorageFragmentationTest extends AbstractOrientTest {
 			}
 		}
 
+		System.out.printf(
+			"Size will be reduced by %s %f",
+			REDUCE_BY_MULTIPLICATION ? "multiplying with" : "subtracting",
+			REDUCTION);
+
 		System.out.println("\nBefore:");
 		long initialSize = printDBSize();
 		System.out.println();
 
-		long deletedRecords = reUseVertex ? reUseVertices() : replaceVertices();
+		long deletedRecords = REUSE_VERTEX ? reUseVertices() : replaceVertices();
 
 		Orient.instance().shutdown();
 		Thread.sleep(5000);
@@ -111,17 +105,16 @@ public class StorageFragmentationTest extends AbstractOrientTest {
 		System.out.println();
 		System.out.println("DB increased by " + toHumanSize(finalSize - initialSize) + " factor: " + String.format("%1.2f", factor));
 		System.out.println("Expected tombstone size: " + toHumanSize(expectedTombstoneSize));
-
 	}
 
 	private long replaceVertices() {
 
 		// Randomly delete and create new records / elements
-		System.out
-			.println("Replace Vertices: Now invoking " + DELETE_CREATE_OPS + " delete & create operations.");
+		System.out.println("Replace Vertices: Now invoking " + DELETE_CREATE_OPS + " delete & create operations.");
 		long deletedRecords = 0;
 		for (int i = 0; i < DELETE_CREATE_OPS; i++) {
 			RecordInfo info = getRandomRecord();
+			int size = reduceSize(info.textSize);
 			OrientGraph tx = factory.getTx();
 			try {
 				// 1. Delete the found record
@@ -131,7 +124,6 @@ public class StorageFragmentationTest extends AbstractOrientTest {
 				ids.remove(info);
 
 				// 2. Reduce the text size for the new record and create it
-				int size = info.textSize - REDUCTION_STEP;
 				Vertex added = addContent(tx, size);
 				tx.commit();
 				ids.add(new RecordInfo(added.getId(), size));
@@ -140,10 +132,17 @@ public class StorageFragmentationTest extends AbstractOrientTest {
 			}
 			if (i % 5000 == 0) {
 				printDBSize();
-				// System.out.println("Delete / Create in Tx: " + i + " size: " + (currentSize / 1024 / 1024) + " MB");
 			}
 		}
 		return deletedRecords;
+	}
+
+	private int reduceSize(int curSize) {
+		if (REDUCE_BY_MULTIPLICATION) {
+			return (int) Math.ceil(curSize * REDUCTION);
+		}
+
+		return Math.max(1, curSize - (int) REDUCTION);
 	}
 
 	private long reUseVertices() {
@@ -151,6 +150,7 @@ public class StorageFragmentationTest extends AbstractOrientTest {
 		System.out.println("Re-Use Vertices: Now invoking " + DELETE_CREATE_OPS + " update operations with smaller text size for updated records");
 		for (int i = 0; i < DELETE_CREATE_OPS; i++) {
 			RecordInfo info = getRandomRecord();
+			int size = reduceSize(info.textSize);
 			OrientGraph tx = factory.getTx();
 
 			try {
@@ -160,8 +160,7 @@ public class StorageFragmentationTest extends AbstractOrientTest {
 				ids.remove(info);
 
 				// 2. Reduce the text size for the new record and create it
-				int size = info.textSize - REDUCTION_STEP;
-				v.setProperty("text", lorem.getParagraphs(size, size));
+				v.setProperty("text", getData(size));
 				ids.add(new RecordInfo(v.getId(), size));
 				tx.commit();
 			} finally {
@@ -169,7 +168,6 @@ public class StorageFragmentationTest extends AbstractOrientTest {
 			}
 			if (i % 5000 == 0) {
 				printDBSize();
-				// System.out.println("Update in Tx: " + i + " size: " + (currentSize / 1024 / 1024) + " MB");
 			}
 		}
 		return 0;
@@ -182,21 +180,12 @@ public class StorageFragmentationTest extends AbstractOrientTest {
 	}
 
 	/**
-	 * Return a random record for which the property can be reduced in size.
-	 * 
-	 * @return
+	 * Return a random record.
+	 *
+	 * @return A random record
 	 */
 	private RecordInfo getRandomRecord() {
-		int MAX_TRIES = 200;
-		for (int i = 0; i < MAX_TRIES; i++) {
-			int r = (int) (Math.random() * ids.size());
-			RecordInfo info = ids.get(r);
-			if (info.textSize - REDUCTION_STEP > 1) {
-				return info;
-			}
-		}
-		fail("Failed to find a record with a larger text size.");
-		return null;
+		return ids.get((int) (Math.random() * ids.size()));
 	}
 
 	private long printDBSize() {
@@ -222,28 +211,55 @@ public class StorageFragmentationTest extends AbstractOrientTest {
 			}
 		}
 
-		System.out.println(
-			"WAL: " + toHumanSize(walSize) + ", PCL: " + toHumanSize(pclSize) + ", CPM: " + toHumanSize(cpmSize) + ", Other: " + toHumanSize(other));
+		System.out.printf(
+			"WAL: %s, PCL: %s, CPM: %s, Other %s%n",
+			toHumanSize(walSize),
+			toHumanSize(pclSize),
+			toHumanSize(cpmSize),
+			toHumanSize(other));
+
 		return pclSize + cpmSize + other;
 	}
 
 	public String toHumanSize(long size) {
+		String unit;
+		int mbFactor = 1024 * 1024;
+
 		if (size < 1024) {
-			return size + " Bytes";
-		} else if (size < 1024 * 1024) {
-			return (size / 1024) + " KB";
+			unit = "Bytes";
+		} else if (size < mbFactor) {
+			unit = "KB";
+			size /= 1024;
 		} else {
-			return (size / 1024 / 1024) + " MB";
+			unit = "MB";
+			size /= mbFactor;
 		}
+
+		return String.format("%5d %s", size, unit);
 	}
 
 	private Vertex addContent(OrientGraph tx, int size) {
+		if (content == null) {
+			content = RandomStringUtils.randomAlphanumeric(INITIAL_TEXT_SIZE);
+		}
 		OrientVertex v = tx.addVertex("class:" + CONTENT_TYPE);
-		v.setProperty("text", lorem.getParagraphs(size, size));
+		v.setProperty("text", getData(size));
 		return v;
 	}
 
-	class RecordInfo {
+	private String getData(int size) {
+		if (content == null) {
+			content = RandomStringUtils.randomAlphanumeric(INITIAL_TEXT_SIZE);
+		}
+
+		if (size > content.length()) {
+			System.out.printf("WARNING: current size %d is greater than data length %d%n", size, content.length());
+		}
+
+		return content.substring(0, size);
+	}
+
+	static class RecordInfo {
 		Object id;
 		int textSize;
 
