@@ -19,6 +19,15 @@ import java.util.List;
 
 import static org.junit.Assert.assertTrue;
 
+/**
+ * This tests asserts the OrientDB storage fragmentation behavior.
+ * 
+ * First 5k of vertices will be created which contain text properties.
+ * After that the test will randomly pick a vertex, delete it and create a new one with a smaller text content.
+ * Ideally the storage size should not explode.
+ * 
+ * The {@link #REUSE_VERTEX} flag can be used to switch to a non-deleting operation. Instead the picked vertex will be purged and reused.
+ */
 public class StorageFragmentationTest extends AbstractOrientTest {
 
 	/* ************************************************************************
